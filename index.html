@@ -481,14 +481,7 @@
     <div id="tab-freq" class="tab-panel" style="display:none;">
       <!-- 상단 컨트롤 바 -->
       <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--emerald-bg);border:1.5px solid var(--emerald-border);border-radius:8px;margin-bottom:14px;flex-shrink:0;box-shadow:0 1px 4px rgba(60,150,80,0.07);flex-wrap:wrap;">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex-shrink:0;">
-          <input type="file" id="corpusFileInput" accept=".txt,.js" style="display:none;" onchange="loadCorpusFile(this)">
-          <button onclick="document.getElementById('corpusFileInput').click()"
-            style="padding:5px 13px;background:var(--emerald);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;">
-            📂 사설데이터 불러오기
-          </button>
-        </label>
-        <span id="corpusStatus" style="font-size:11px;font-weight:700;color:var(--emerald);">사설 데이터를 불러오면 빈도수 체크가 활성화됩니다.</span>
+        <span id="corpusStatus" style="font-size:11px;font-weight:700;color:var(--emerald);">⏳ 사설 데이터 로딩 중...</span>
         <button class="freq-copy-btn" onclick="freqCopyAll()"
           style="margin-left:auto;">📋 일괄복사</button>
       </div>
@@ -1460,35 +1453,52 @@ function updateCorpusStatus() {
   const btn = document.getElementById('freqRunBtn');
   if (!el) return;
   if (CORPUS_NORMALIZED.length > 0) {
+    // 띄어쓰기 제외 글자 수 = 정규화 전 원문에서 공백 제거한 길이
     el.textContent = `✅ 사설데이터 로드 완료 — 총 ${CORPUS_NORMALIZED.length.toLocaleString()}자`;
     el.style.color = 'var(--emerald)';
     el.style.fontWeight = '700';
     if (btn) btn.disabled = false;
   } else {
-    el.textContent = '사설 데이터를 불러오면 빈도수 체크가 활성화됩니다.';
-    el.style.color = 'var(--emerald)';
-    el.style.fontWeight = '';
+    el.textContent = '❌ 사설 데이터를 불러올 수 없습니다. (data.txt 확인)';
+    el.style.color = 'var(--red)';
+    el.style.fontWeight = '700';
     if (btn) btn.disabled = true;
   }
 }
 
-// 파일 불러오기 (📂 버튼)
-function loadCorpusFile(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const el = document.getElementById('corpusStatus');
-  el.textContent = '⏳ 로딩 중...';
-  const reader = new FileReader();
-  reader.onload = e => {
-    CORPUS_NORMALIZED = normalizeForFreq(e.target.result);
-    updateCorpusStatus();
-  };
-  reader.onerror = () => {
-    el.textContent = '❌ 파일 읽기 실패';
-    el.style.color = 'var(--red)';
-  };
-  reader.readAsText(file, 'UTF-8');
+// data.txt 자동 로드 (페이지 시작 시)
+function autoLoadCorpus() {
+  fetch('data.txt?_=' + Date.now())
+    .then(res => {
+      if (!res.ok) throw new Error('fetch failed');
+      return res.text();
+    })
+    .then(text => {
+      // 띄어쓰기 제외 글자 수 계산 후 저장
+      const noSpace = text.replace(/\s/g, '');
+      CORPUS_NORMALIZED = normalizeForFreq(noSpace);
+      // 상태 표시: 띄어쓰기 제외 글자 수
+      const el = document.getElementById('corpusStatus');
+      const btn = document.getElementById('freqRunBtn');
+      if (el) {
+        el.textContent = `✅ 사설데이터 로드 완료 — 총 ${noSpace.length.toLocaleString()}자`;
+        el.style.color = 'var(--emerald)';
+        el.style.fontWeight = '700';
+      }
+      if (btn) btn.disabled = false;
+    })
+    .catch(() => {
+      const el = document.getElementById('corpusStatus');
+      if (el) {
+        el.textContent = '❌ data.txt 로드 실패 — 파일이 같은 폴더에 있는지 확인하세요.';
+        el.style.color = 'var(--red)';
+        el.style.fontWeight = '700';
+      }
+    });
 }
+
+// 페이지 로드 시 자동 실행
+window.addEventListener('DOMContentLoaded', autoLoadCorpus);
 
 // ============================================================
 // 우클릭 차단 + 텍스트박스 외 드래그/선택 차단
