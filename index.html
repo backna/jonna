@@ -252,6 +252,10 @@
     pointer-events:none;
     border:1px solid rgba(255,255,255,0.08);
   }
+  .jaso-tooltip .tt-title{
+    font-size:10px;font-weight:700;color:#a0a8c8;
+    letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px;
+  }
   .jaso-tooltip .tt-body{color:#f0f0f8;}
   #missListBox{padding-right:10px;overflow-x:hidden;}
 
@@ -331,7 +335,7 @@
           <input type="checkbox" id="accumulateChk" onchange="onAccumulateChange(this)">
           <span id="accumulateLabel">OFF</span>
         </label>
-        <span id="accumulateStatus" style="font-size:11px;color:var(--theme-500);opacity:0.85;font-weight:600;">채점할 때마다 오자 통계가 누적됩니다</span>
+        <span id="accumulateStatus" style="font-size:11px;color:var(--theme-500);opacity:0.85;font-weight:600;">채점시 오자 통계 누적</span>
         <button id="promptCopyBtn" onclick="copyJasoPrompt()"
           style="margin-left:auto;padding:5px 13px;background:#fff;color:var(--theme-500);border:1.5px solid var(--theme-300);border-radius:6px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s;"
           onmouseover="this.style.background='var(--theme-500)';this.style.color='#fff';"
@@ -513,13 +517,13 @@ function onAccumulateChange(chk){
   const statusEl=document.getElementById('accumulateStatus'),toggle=document.getElementById('accumulateToggle'),labelEl=document.getElementById('accumulateLabel');
   if(chk.checked){
     toggle.style.background='var(--theme-500)';toggle.style.color='#fff';toggle.style.borderColor='var(--theme-500)';
-    labelEl.textContent='ON';statusEl.textContent='ON - 채점할 때마다 오자 통계가 누적됩니다';statusEl.style.color='var(--theme-500)';statusEl.style.opacity='1';statusEl.style.fontWeight='700';
+    labelEl.textContent='ON';statusEl.textContent='ON - 채점시 오자 통계 누적';statusEl.style.color='var(--theme-500)';statusEl.style.opacity='1';statusEl.style.fontWeight='700';
     resetAccumulatedData();_lastJasoData={cho:{},jung:{},jong:{}};
     if(_lastWrongItems.length){const freshAnalysis=analyzeWrong(_lastWrongItems,_abbrevLevel);mergeIntoAccumulated(freshAnalysis);document.getElementById('analysisBox').innerHTML=renderAnalysis(getAccumulatedAnalysis());}
     else document.getElementById('analysisBox').innerHTML='<p class="empty-msg">채점 후 오자 분석이 여기에 표시됩니다.</p>';
   }else{
     toggle.style.background='var(--theme-50)';toggle.style.color='var(--theme-500)';toggle.style.borderColor='var(--theme-300)';
-    labelEl.textContent='OFF';statusEl.textContent='채점할 때마다 오자 통계가 누적됩니다';statusEl.style.color='var(--theme-500)';statusEl.style.opacity='0.75';statusEl.style.fontWeight='600';
+    labelEl.textContent='OFF';statusEl.textContent='채점시 오자 통계 누적';statusEl.style.color='var(--theme-500)';statusEl.style.opacity='0.75';statusEl.style.fontWeight='600';
     resetAccumulatedData();_lastJasoData={cho:{},jung:{},jong:{}};_lastWrongItems=[];
     document.getElementById('analysisBox').innerHTML='<p class="empty-msg">채점 후 오자 분석이 여기에 표시됩니다.</p>';
     setGradeBtnEnabled(true);
@@ -540,7 +544,7 @@ function renderAnalysis({cho,jung,jong,skipAbbrev,choSamples,jungSamples,jongSam
   html+=hasData?grid(cho,'초성 혼동',choSamples)+grid(jung,'중성 혼동',jungSamples)+grid(jong,'종성 혼동',jongSamples):'<p style="color:var(--sub);font-size:13px;">분석 가능한 자모 오자가 없습니다.</p>';
   html+='</div>';
   if(skipAbbrev.length){
-    html+=`<div class="analysis-section"><h3>약어 혼동 추정 (자모 유사도 ${_abbrevLevel}% 미만)</h3><div class="abbrev-note-box">💡 글자 형태가 크게 달라 의도한 약어가 아닌 다른 약어를 입력한 것으로 추정 / 형식: 오자(원문)</div><div class="skip-list">`;
+    html+=`<div class="analysis-section"><h3>약어 혼동 추정 (자모 유사도 ${_abbrevLevel}% 미만)</h3><div class="abbrev-note-box">💡 글자 형태가 크게 달라 의도한 약어가 아닌 다른 약어를 입력한 것으로 추정됩니다. </div><div class="skip-list">`;
     skipAbbrev.forEach(({orig,inp,sim,cnt})=>{const cntBadge=cnt>1?`<span class="cnt-circle">${cnt}회</span>`:'';html+=`<span class="skip-item">${inp}(${orig})${cntBadge}</span>`;});
     html+='</div></div>';
   }
@@ -718,7 +722,7 @@ document.addEventListener('mousedown',e=>{if(!e.target.closest('textarea, input[
     if(!raw)return;
     const pair=el.querySelector('.pair')?.textContent||'';
     const text=formatSamples(raw);
-    tt.innerHTML=`<div class="tt-body">${text.replace(/\n/g,'<br>')}</div>`;
+    tt.innerHTML=`<div class="tt-title">오자(원문)</div><div class="tt-body">${text.replace(/\n/g,'<br>')}</div>`;
     tt.style.display='block';
     positionTip(e);
   }
