@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>속기 타자연습</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3250;
+    --accent: #5b7cfa;
+    --accent2: #fa5b8a;
+    --text: #e8eaf6;
+    --text-muted: #6b7280;
+    --correct: #ffffff;
+    --error: #ff4f6b;
+    --pending: #3a3f5c;
+    --success: #34d399;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; }
+
+  header { background:var(--surface); border-bottom:1px solid var(--border); padding:0 24px; height:56px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
+  .header-title { font-size:14px; font-weight:500; color:var(--text-muted); letter-spacing:.05em; }
+  .header-title span { color:var(--accent); font-weight:700; }
+  .header-actions { display:flex; gap:10px; align-items:center; }
+  .btn { padding:7px 16px; border-radius:6px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-family:'Noto Sans KR',sans-serif; font-size:13px; cursor:pointer; transition:all .15s; font-weight:500; }
+  .btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+  .btn:disabled { opacity:.35; cursor:not-allowed; }
+  .btn-primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn-primary:hover:not(:disabled) { background:#4a6cf0; border-color:#4a6cf0; color:#fff; }
+  .btn-danger { background:var(--accent2); border-color:var(--accent2); color:#fff; }
+  .btn-danger:hover:not(:disabled) { background:#e04070; border-color:#e04070; color:#fff; }
+
+  .toggle-inline { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-muted); user-select:none; padding-right:12px; margin-right:4px; border-right:1px solid var(--border); }
+  .toggle-inline span { white-space:nowrap; }
+  .toggle-inline.disabled { opacity:.35; pointer-events:none; }
+  .toggle { position:relative; width:34px; height:20px; flex-shrink:0; }
+  .toggle input { opacity:0; width:0; height:0; }
+  .toggle-slider { position:absolute; inset:0; background:var(--border); border-radius:20px; cursor:pointer; transition:.2s; }
+  .toggle-slider::after { content:''; position:absolute; width:14px; height:14px; background:#fff; border-radius:50%; top:3px; left:3px; transition:.2s; }
+  .toggle input:checked + .toggle-slider { background:var(--accent); }
+  .toggle input:checked + .toggle-slider::after { transform:translateX(14px); }
+
+  main { display:flex; flex:1; min-height:0; }
+  aside { width:220px; flex-shrink:0; background:var(--surface); border-right:1px solid var(--border); padding:28px 20px; display:flex; flex-direction:column; gap:24px; }
+  .stat-block { display:flex; flex-direction:column; gap:4px; }
+  .stat-label { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.08em; }
+  .stat-value { font-family:'JetBrains Mono',monospace; font-size:28px; font-weight:600; color:var(--text); }
+  .stat-value.error-val { color:var(--error); }
+  .stat-bar-bg { height:3px; background:var(--border); border-radius:2px; margin-top:6px; overflow:hidden; }
+  .stat-bar-fill { height:100%; border-radius:2px; background:var(--accent); transition:width .3s; }
+  .sidebar-actions { margin-top:auto; display:flex; flex-direction:column; gap:10px; }
+
+  .content { flex:1; display:flex; flex-direction:column; padding:40px; min-width:0; overflow-y:auto; }
+  .empty-state { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; color:var(--text-muted); }
+  .empty-icon { font-size:48px; opacity:.3; }
+  .empty-state p { font-size:14px; line-height:1.6; text-align:center; }
+
+  .typing-wrap { display:none; flex-direction:column; flex:1; }
+  .typing-wrap.active { display:flex; }
+
+  /* 상단 미리보기 */
+  .preview-container { background:var(--surface); border:1px solid var(--border); border-bottom:none; border-radius:10px 10px 0 0; padding:0 32px; height:72px; overflow:hidden; position:relative; }
+  .preview-track { position:absolute; left:32px; right:32px; top:0; }
+  .preview-row { height:72px; display:flex; align-items:center; font-size:26px; letter-spacing:.03em; line-height:1; white-space:nowrap; overflow:hidden; }
+  .preview-row.row-next { display:none; }
+  .char { color:#8892b0; flex-shrink:0; }
+  .char.correct { color:#ffffff; }
+  .char.error   { color:var(--error); }
+
+  .progress-bar-bg { height:3px; background:var(--border); overflow:hidden; }
+  .progress-bar-fill { height:100%; background:var(--accent); transition:width .25s; }
+
+  /* 입력 표시줄 */
+  .typed-display-wrap { background:var(--surface2); border:1px solid var(--border); border-top:none; border-radius:0 0 10px 10px; height:72px; position:relative; display:flex; align-items:center; padding:0 32px; overflow:hidden; cursor:text; }
+  .typed-display { font-size:26px; letter-spacing:.03em; white-space:nowrap; flex:1; display:flex; align-items:center; overflow:hidden; pointer-events:none; }
+  .td-char { flex-shrink:0; }
+  .td-char.ok  { color:#ffffff; }
+  .td-char.bad { color:var(--error); }
+  .td-char.skip-char { color:#8892b0; }
+  .td-caret { display:inline-block; width:2px; height:30px; background:var(--accent); margin-left:1px; flex-shrink:0; vertical-align:middle; animation:blink .9s step-end infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  #typing-box {
+    position:absolute; inset:0; opacity:0; border:none; outline:none;
+    font-size:26px; background:transparent; color:transparent; caret-color:transparent;
+  }
+
+  /* ── 고스트 미리보기 줄 ── */
+  .ghost-preview-wrap {
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-top: 1px dashed var(--border);
+    border-bottom: none;
+    border-radius:0;
+    height:72px;
+    padding:0 32px;
+    overflow:hidden;
+    position:relative;
+  }
+  /* 슬라이드 애니메이션용 트랙 */
+  .ghost-track {
+    position:absolute; left:32px; right:32px; top:0;
+  }
+  .ghost-row {
+    height:72px; display:flex; align-items:center;
+    font-size:26px; letter-spacing:.03em; line-height:1;
+    white-space:nowrap; overflow:hidden;
+  }
+  .ghost-char {
+    color: rgba(136,146,176,0.28); /* 흐릿한 투명 */
+    flex-shrink:0;
+  }
+  /* 구분선 레이블 */
+  .ghost-label {
+    position:absolute; top:6px; right:12px;
+    font-size:10px; color:rgba(107,114,128,0.5);
+    letter-spacing:.06em; text-transform:uppercase;
+    pointer-events:none;
+  }
+
+  /* RESULT */
+  .result-wrap { display:none; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:24px; }
+  .result-wrap.active { display:flex; }
+  .result-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:40px 48px; text-align:center; min-width:340px; }
+  .result-card h2 { font-size:18px; color:var(--success); margin-bottom:24px; letter-spacing:.05em; }
+  .result-stats { display:grid; grid-template-columns:1fr 1fr; gap:20px 32px; }
+  .result-stat .label { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.08em; }
+  .result-stat .value { font-family:'JetBrains Mono',monospace; font-size:32px; font-weight:700; margin-top:4px; }
+  .result-stat .value.e   { color:var(--error); }
+  .result-stat .value.acc { color:var(--success); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-title"><span>속기</span> 타자연습</div>
+  <div class="header-actions">
+    <label class="toggle-inline" id="ignore-toggle-wrap">
+      <span>띄어쓰기·문장부호 무시</span>
+      <label class="toggle">
+        <input type="checkbox" id="ignore-spaces" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </label>
+    <input type="file" id="file-input" accept=".txt" style="display:none">
+    <button class="btn" id="btn-load">불러오기</button>
+    <button class="btn btn-primary" id="btn-start" disabled>시작(F9)</button>
+    <button class="btn btn-danger"  id="btn-end"   style="display:none" disabled>종료(ESC)</button>
+  </div>
+</header>
+
+<main>
+  <aside>
+    <div class="stat-block">
+      <div class="stat-label">경과 시간</div>
+      <div class="stat-value" id="stat-time">00:00</div>
+      <div class="stat-bar-bg"><div class="stat-bar-fill" id="bar-time" style="width:0%"></div></div>
+    </div>
+    <div class="stat-block">
+      <div class="stat-label">타수 (자/분)</div>
+      <div class="stat-value" id="stat-speed">0자</div>
+    </div>
+    <div class="stat-block">
+      <div class="stat-label">오자</div>
+      <div class="stat-value error-val" id="stat-errors">0자</div>
+    </div>
+    <div class="sidebar-actions">
+      <button class="btn" id="btn-reset" disabled>초기화</button>
+    </div>
+  </aside>
+
+  <div class="content">
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">⌨️</div>
+      <p>텍스트 파일을 불러온 후<br>F9를 눌러 시작하세요</p>
+    </div>
+
+    <div class="typing-wrap" id="typing-wrap">
+      <!-- 상단: 목표 텍스트 미리보기 -->
+      <div class="preview-container">
+        <div class="preview-track" id="preview-track">
+          <div class="preview-row row-cur"  id="row-cur"></div>
+          <div class="preview-row row-next" id="row-next"></div>
+        </div>
+      </div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+
+      <!-- 중간: 다음 청크 고스트 미리보기 -->
+      <div class="ghost-preview-wrap" id="ghost-preview-wrap">
+        <span class="ghost-label">next</span>
+        <div class="ghost-track" id="ghost-track">
+          <div class="ghost-row" id="ghost-row"></div>
+        </div>
+      </div>
+
+      <!-- 하단: 입력 표시줄 -->
+      <div class="typed-display-wrap" id="typed-display-wrap">
+        <div class="typed-display" id="typed-display"></div>
+        <input id="typing-box" type="text" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" disabled>
+      </div>
+    </div>
+
+    <div class="result-wrap" id="result-wrap">
+      <div class="result-card">
+        <h2>✓ 완료</h2>
+        <div class="result-stats">
+          <div class="result-stat"><div class="label">시간</div><div class="value" id="res-time">—</div></div>
+          <div class="result-stat"><div class="label">타수</div><div class="value" id="res-speed">—</div></div>
+          <div class="result-stat"><div class="label">오자</div><div class="value e" id="res-errors">—</div></div>
+          <div class="result-stat"><div class="label">정답률</div><div class="value acc" id="res-accuracy">—</div></div>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btn-retry">다시 연습</button>
+    </div>
+  </div>
+</main>
+
+<script>
+const ignoreToggle = document.getElementById('ignore-spaces');
+const ignoreWrap   = document.getElementById('ignore-toggle-wrap');
+const fileInput    = document.getElementById('file-input');
+const btnLoad      = document.getElementById('btn-load');
+const btnStart     = document.getElementById('btn-start');
+const btnEnd       = document.getElementById('btn-end');
+const btnReset     = document.getElementById('btn-reset');
+const btnRetry     = document.getElementById('btn-retry');
+const previewTrack = document.getElementById('preview-track');
+const rowCur       = document.getElementById('row-cur');
+const rowNext      = document.getElementById('row-next');
+const typingBox    = document.getElementById('typing-box');
+const typedDisplay = document.getElementById('typed-display');
+const typedWrap    = document.getElementById('typed-display-wrap');
+const emptyState   = document.getElementById('empty-state');
+const typingWrap   = document.getElementById('typing-wrap');
+const resultWrap   = document.getElementById('result-wrap');
+const statTime     = document.getElementById('stat-time');
+const statSpeed    = document.getElementById('stat-speed');
+const statErrors   = document.getElementById('stat-errors');
+const resTime      = document.getElementById('res-time');
+const resSpeed     = document.getElementById('res-speed');
+const resErrors    = document.getElementById('res-errors');
+const resAccuracy  = document.getElementById('res-accuracy');
+const progressFill = document.getElementById('progress-fill');
+const ghostTrack   = document.getElementById('ghost-track');
+const ghostRow     = document.getElementById('ghost-row');
+
+let rawText = '', allChars = [], nonSkipChars = [], allIdxOfNonSkip = [];
+let charResults = [], judgedCount = 0, errorCount = 0, correctCount = 0;
+let errorEver = [], timerInterval = null, startTime = null, elapsedSec = 0, running = false;
+let chunks = [], curChunk = 0;
+const CHUNK_SIZE = 28;
+
+function isSkip(ch) { return !ignoreToggle.checked ? false : /[^가-힣a-zA-Z0-9]/.test(ch); }
+function formatTime(s) { return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+function getSpeed() { return Math.round(correctCount / (elapsedSec/60 || 0.001)); }
+function getAccuracy() {
+  const t = nonSkipChars.length;
+  return t === 0 ? 100 : Math.round((t - errorCount) / t * 100);
+}
+
+function buildChars(text) {
+  allChars = [...text].map(ch => ({ char:ch, skip:isSkip(ch) }));
+  nonSkipChars = []; allIdxOfNonSkip = [];
+  allChars.forEach((o,i) => { if (!o.skip) { allIdxOfNonSkip.push(i); nonSkipChars.push(o.char); } });
+  charResults = new Array(nonSkipChars.length).fill(null);
+  errorEver   = new Array(nonSkipChars.length).fill(false);
+  judgedCount = 0;
+  buildChunks(); curChunk = 0;
+}
+
+function buildChunks() {
+  chunks = [];
+  const total = nonSkipChars.length;
+  if (!total) return;
+  let ns = 0;
+  while (ns < total) {
+    const ne = Math.min(ns + CHUNK_SIZE, total);
+    const allStart = allIdxOfNonSkip[ns];
+    const allEnd   = ne < total ? allIdxOfNonSkip[ne] : allChars.length;
+    chunks.push({ nsiStart:ns, nsiEnd:ne, allStart, allEnd });
+    ns = ne;
+  }
+}
+
+// ── 상단 미리보기 행 HTML ──────────────────────────────────────────────────
+function buildRowHTML(ci) {
+  if (ci >= chunks.length) return '<span style="color:var(--text-muted);font-size:14px">끝</span>';
+  const c = chunks[ci];
+  let html = '', nsi = c.nsiStart;
+  for (let i = c.allStart; i < c.allEnd; i++) {
+    const o  = allChars[i];
+    const ch = o.char === ' ' ? '&nbsp;' : o.char;
+    if (o.skip) {
+      const r = nsi > 0 ? charResults[nsi-1] : null;
+      html += `<span class="char${r==='correct'?' correct':r==='error'?' error':''}">${ch}</span>`;
+    } else {
+      const r = charResults[nsi];
+      html += `<span class="char${r==='correct'?' correct':r==='error'?' error':''}">${ch}</span>`;
+      nsi++;
+    }
+  }
+  return html;
+}
+
+// ── 고스트 행 HTML (다음 청크, 투명 스타일) ───────────────────────────────
+function buildGhostHTML(ci) {
+  if (ci >= chunks.length) return '';
+  const c = chunks[ci];
+  let html = '';
+  for (let i = c.allStart; i < c.allEnd; i++) {
+    const o  = allChars[i];
+    const ch = o.char === ' ' ? '&nbsp;' : o.char;
+    html += `<span class="ghost-char">${ch}</span>`;
+  }
+  return html;
+}
+
+function rebuildRows() {
+  rowCur.innerHTML  = buildRowHTML(curChunk);
+  rowNext.innerHTML = buildRowHTML(curChunk + 1);
+  ghostRow.innerHTML = buildGhostHTML(curChunk + 1);
+}
+
+function renderPreview() {
+  let nc = 0;
+  for (let i = 0; i < chunks.length; i++) {
+    if (judgedCount < chunks[i].nsiEnd) { nc = i; break; }
+    nc = i;
+  }
+
+  if (nc > curChunk) {
+    // 앞으로 진행 — 위 미리보기는 아래로, 고스트는 위로 슬라이드
+    curChunk = nc;
+
+    // 상단 미리보기 슬라이드
+    previewTrack.style.transition = 'transform .09s cubic-bezier(.4,0,.2,1)';
+    previewTrack.style.transform  = 'translateY(-58px)';
+
+    // 고스트 줄: 위로 슬라이드 (사라지는 방향 — 새 고스트는 아래서 올라옴)
+    ghostTrack.style.transition = 'transform .09s cubic-bezier(.4,0,.2,1)';
+    ghostTrack.style.transform  = 'translateY(-72px)';
+
+    setTimeout(() => {
+      previewTrack.style.transition = 'none';
+      previewTrack.style.transform  = 'translateY(0)';
+      ghostTrack.style.transition = 'none';
+      ghostTrack.style.transform  = 'translateY(72px)'; // 아래에서 대기
+      rebuildRows();
+      // 살짝 delay 후 자연스럽게 제자리로
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          ghostTrack.style.transition = 'transform .08s cubic-bezier(.4,0,.2,1)';
+          ghostTrack.style.transform  = 'translateY(0)';
+        });
+      });
+    }, 110);
+
+  } else if (nc < curChunk) {
+    curChunk = nc;
+    previewTrack.style.transition = 'transform .09s cubic-bezier(.4,0,.2,1)';
+    previewTrack.style.transform  = 'translateY(58px)';
+    ghostTrack.style.transition = 'transform .09s cubic-bezier(.4,0,.2,1)';
+    ghostTrack.style.transform  = 'translateY(72px)';
+    setTimeout(() => {
+      previewTrack.style.transition = 'none';
+      previewTrack.style.transform  = 'translateY(0)';
+      ghostTrack.style.transition = 'none';
+      ghostTrack.style.transform  = 'translateY(-72px)';
+      rebuildRows();
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          ghostTrack.style.transition = 'transform .08s cubic-bezier(.4,0,.2,1)';
+          ghostTrack.style.transform  = 'translateY(0)';
+        });
+      });
+    }, 110);
+  } else {
+    rebuildRows();
+  }
+
+  const total = nonSkipChars.length;
+  if (total > 0) progressFill.style.width = Math.round(judgedCount/total*100)+'%';
+}
+
+function updateStats() {
+  statTime.textContent   = formatTime(elapsedSec);
+  statSpeed.textContent  = getSpeed()+'자';
+  statErrors.textContent = errorCount+'자';
+}
+
+let composing = false;
+
+function recompute() {
+  if (!running) return;
+  const typed = [...typingBox.value];
+  let ni = 0;
+  charResults.fill(null);
+  let newCorrect = 0;
+  for (let i = 0; i < typed.length; i++) {
+    const ch = typed[i];
+    if (isSkip(ch)) continue;
+    if (ni < nonSkipChars.length) {
+      const ok = (ch === nonSkipChars[ni]);
+      charResults[ni] = ok ? 'correct' : 'error';
+      if (!ok && !errorEver[ni]) { errorEver[ni] = true; errorCount++; }
+      if (ok) newCorrect++;
+      ni++;
+    }
+  }
+  judgedCount = ni;
+  correctCount = newCorrect;
+  renderPreview();
+  updateStats();
+  updateTypedDisplay();
+  if (nonSkipChars.length > 0 && judgedCount >= nonSkipChars.length) setTimeout(finishTest, 80);
+}
+
+function updateTypedDisplay() {
+  if (!running) { typedDisplay.innerHTML = ''; return; }
+  const c = chunks[curChunk];
+  if (!c) return;
+  const typedNonSkip = [...typingBox.value].filter(ch => !isSkip(ch));
+  let html = '', nsi = c.nsiStart, caretPlaced = false;
+  for (let ai = c.allStart; ai < c.allEnd; ai++) {
+    const o = allChars[ai];
+    const disp = o.char === ' ' ? '&nbsp;' : o.char;
+    if (o.skip) {
+      html += `<span class="td-char skip-char">${disp}</span>`;
+    } else {
+      const typedCh = typedNonSkip[nsi];
+      if (typedCh === undefined) {
+        if (!caretPlaced) { html += '<span class="td-caret"></span>'; caretPlaced = true; }
+        break;
+      }
+      const ok = (typedCh === nonSkipChars[nsi]);
+      const actualDisp = ok ? disp : (typedCh === ' ' ? '&nbsp;' : typedCh);
+      html += `<span class="td-char ${ok?'ok':'bad'}">${actualDisp}</span>`;
+      nsi++;
+    }
+  }
+  if (!caretPlaced) html += '<span class="td-caret"></span>';
+  typedDisplay.innerHTML = html;
+}
+
+typingBox.addEventListener('compositionstart', () => { composing = true; });
+typingBox.addEventListener('compositionend',   () => { composing = false; recompute(); });
+typingBox.addEventListener('keydown', e => {
+  if (!running) return;
+  if (e.key === 'Enter') { e.preventDefault(); return; }
+  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(e.key)) { e.preventDefault(); return; }
+});
+typingBox.addEventListener('input', () => { if (!running || composing) return; recompute(); moveCursorToEnd(); });
+typingBox.addEventListener('blur',  () => { if (running) requestAnimationFrame(() => { typingBox.focus(); moveCursorToEnd(); }); });
+typedWrap.addEventListener('click', () => { if (running) { typingBox.focus(); moveCursorToEnd(); } });
+
+function moveCursorToEnd() {
+  const len = typingBox.value.length;
+  typingBox.setSelectionRange(len, len);
+}
+
+// 커서가 끝이 아닌 위치로 이동하는 것을 차단
+typingBox.addEventListener('select', () => { if (running) moveCursorToEnd(); });
+typingBox.addEventListener('mouseup', () => { if (running) moveCursorToEnd(); });
+typingBox.addEventListener('keyup', e => {
+  if (!running) return;
+  if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(e.key)) moveCursorToEnd();
+});
+// 포커스 시 항상 커서를 끝으로
+typingBox.addEventListener('focus', () => { if (running) setTimeout(moveCursorToEnd, 0); });
+
+btnLoad.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', ev => {
+  const file = ev.target.files[0]; if (!file) return; fileInput.value = '';
+  const r1 = new FileReader();
+  r1.onload = e1 => {
+    const text = e1.target.result;
+    if (text.includes('\uFFFD') || (!/[가-힣]/.test(text) && /[\u0080-\u00FF]/.test(text))) {
+      const r2 = new FileReader();
+      r2.onload = e2 => loadText(e2.target.result);
+      r2.readAsText(file, 'EUC-KR');
+    } else { loadText(text); }
+  };
+  r1.readAsText(file, 'UTF-8');
+});
+
+function loadText(text) { rawText = text.replace(/[\r\n]+/g, ' ').trim(); resetToReady(); }
+
+function resetToReady() {
+  stopTimer(); running = false; errorCount = 0; correctCount = 0;
+  errorEver = []; composing = false; elapsedSec = 0; curChunk = 0;
+  previewTrack.style.transition = 'none'; previewTrack.style.transform = 'translateY(0)';
+  ghostTrack.style.transition = 'none'; ghostTrack.style.transform = 'translateY(0)';
+  buildChars(rawText); updateStats();
+  typingBox.value = ''; typedDisplay.innerHTML = ''; typingBox.disabled = true;
+  emptyState.style.display = 'none';
+  typingWrap.classList.add('active'); resultWrap.classList.remove('active');
+  btnStart.textContent = '시작(F9)'; btnStart.className = 'btn btn-primary';
+  btnStart.disabled = false; btnEnd.style.display = 'none'; btnEnd.disabled = true; btnReset.disabled = true;
+  rebuildRows(); progressFill.style.width = '0%';
+}
+
+btnStart.addEventListener('click', startTest);
+btnEnd.addEventListener('click', () => { stopTest(); resetToReady(); });
+btnReset.addEventListener('click', resetToReady);
+btnRetry.addEventListener('click', resetToReady);
+document.addEventListener('keydown', e => {
+  if (e.key === 'F9')     { e.preventDefault(); if (!running && rawText) startTest(); }
+  if (e.key === 'Escape' && running) { stopTest(); resetToReady(); }
+});
+
+function startTest() {
+  if (!rawText) return;
+  running = true; composing = false; judgedCount = 0; curChunk = 0;
+  errorCount = 0; correctCount = 0;
+  charResults = new Array(nonSkipChars.length).fill(null);
+  errorEver   = new Array(nonSkipChars.length).fill(false);
+  previewTrack.style.transition = 'none'; previewTrack.style.transform = 'translateY(0)';
+  ghostTrack.style.transition   = 'none'; ghostTrack.style.transform   = 'translateY(0)';
+  typingBox.value = ''; typedDisplay.innerHTML = '';
+  typingBox.disabled = false; typingBox.focus(); moveCursorToEnd();
+  startTime = Date.now(); elapsedSec = 0;
+  ignoreWrap.classList.add('disabled'); ignoreToggle.disabled = true;
+  timerInterval = setInterval(() => { elapsedSec = Math.floor((Date.now()-startTime)/1000); updateStats(); }, 300);
+  rebuildRows(); progressFill.style.width = '0%';
+  btnStart.style.display = 'none'; btnEnd.style.display = ''; btnEnd.disabled = false; btnReset.disabled = false;
+}
+function stopTest() {
+  running = false; stopTimer(); typingBox.disabled = true;
+  ignoreWrap.classList.remove('disabled'); ignoreToggle.disabled = false;
+}
+function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
+function finishTest() {
+  if (!running) return; stopTest();
+  typingWrap.classList.remove('active'); resultWrap.classList.add('active');
+  resTime.textContent     = formatTime(elapsedSec);
+  resSpeed.textContent    = getSpeed()+'자/분';
+  resErrors.textContent   = errorCount+'자';
+  resAccuracy.textContent = getAccuracy()+'%';
+  btnEnd.style.display = 'none'; btnStart.style.display = '';
+  btnStart.disabled = true; btnReset.disabled = true;
+}
+
+ignoreToggle.addEventListener('change', () => { if (rawText && !running) resetToReady(); });
+
+emptyState.style.display = '';
+typingWrap.classList.remove('active');
+resultWrap.classList.remove('active');
+</script>
+</body>
+</html>
