@@ -30,7 +30,8 @@
   textarea{width:100%;height:120px;border:1.5px solid var(--theme-200);border-radius:7px;padding:9px 11px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;font-size:14px;line-height:1.8;color:var(--text);resize:vertical;outline:none;transition:border-color .2s;background:#fafbfd;}
   textarea:focus{border-color:var(--theme-400);background:#fff;}
   #gradeBtn{width:100%;padding:17px 13px;background:linear-gradient(135deg,var(--theme-400),var(--theme-500));color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;font-family:'Malgun Gothic','맑은 고딕',sans-serif;cursor:pointer;letter-spacing:1px;transition:all .2s;margin-bottom:14px;box-shadow:0 3px 12px var(--theme-shadow);}
-  #gradeBtn:hover{background:linear-gradient(135deg,var(--theme-500),var(--theme-600));transform:translateY(-1px);box-shadow:0 5px 18px var(--theme-shadow);}
+  #gradeBtn:hover:not(:disabled){background:linear-gradient(135deg,var(--theme-500),var(--theme-600));transform:translateY(-1px);box-shadow:0 5px 18px var(--theme-shadow);}
+  #gradeBtn:disabled{background:linear-gradient(135deg,var(--theme-300),var(--theme-400));cursor:not-allowed;transform:none;box-shadow:none;opacity:0.65;pointer-events:none;}
   .stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
   .stat-item{flex:1;min-width:90px;background:var(--panel);border:1.5px solid var(--theme-200);border-radius:10px;padding:10px 12px;text-align:center;box-shadow:0 2px 10px var(--theme-shadow);}
   .stat-item .lbl{font-size:11px;color:var(--theme-sub);font-weight:600;margin-bottom:3px;}
@@ -794,7 +795,7 @@ let _gradeBtnLocked=false;
 function setGradeBtnEnabled(enabled){
   _gradeBtnLocked=!enabled;
   const btn=document.getElementById('gradeBtn');
-  btn.disabled=!enabled;btn.style.opacity=enabled?'':'0.45';btn.style.cursor=enabled?'':'not-allowed';
+  btn.disabled=!enabled;btn.style.opacity=enabled?'':'0.65';btn.style.cursor=enabled?'':'not-allowed';btn.style.pointerEvents=enabled?'':'none';btn.style.transform=enabled?'':'none';
 }
 document.addEventListener('DOMContentLoaded',()=>{['originalText','inputText'].forEach(id=>{document.getElementById(id).addEventListener('input',()=>{if(_gradeBtnLocked)setGradeBtnEnabled(true);});});});
 
