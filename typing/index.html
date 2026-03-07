@@ -482,26 +482,39 @@ function updateStats() {
 
 let composing = false;
 
-// ── 버그 수정: 창 전환 시 IME 오염 방지 ────────────────────────────────────
-// 문제 원인:
-//   1) 다른 창에 갔다오면 blur → rAF 재포커싱 발생
-//   2) 재포커싱 순간 브라우저가 IME 상태를 리셋하며
-//      compositionend가 이전 조합 데이터로 발생하거나,
-//      composing=false 상태에서 input 이벤트가 잘못 실행됨
-//   3) recompute()의 charResults.fill(null) 전체 재채점 구조 때문에
-//      value가 조금이라도 오염되면 멀쩡한 글자들이 전부 오자로 판정됨
+// ════════════════════════════════════════════════════════════════════
+//  핵심 버그 원인 (3벌식 + 창 전환)
+//  ──────────────────────────────────────────────────────────────────
+//  3벌식은 1키=1글자 완성이지만 브라우저 IME는 내부적으로
+//  compositionstart → compositionend 사이클을 돌립니다.
+//  다른 창에 갔다 돌아올 때 blur 와 compositionend 발생 순서가
+//  브라우저/OS마다 다릅니다:
 //
-// 해결책:
-//   A) 검증된 입력값(lastSafeValue)을 스냅샷으로 유지
-//   B) blur 발생 시 typingBox.value를 lastSafeValue로 복원 후 재포커싱
-//   C) compositionstart 시 그 시점의 value를 beforeCompositionValue로 저장,
-//      compositionend 후 value 길이가 비정상(줄어듦)이면 beforeCompositionValue로 복원
-//   D) document.visibilitychange 감지로 탭 전환 시 composing 상태 강제 리셋
-let lastSafeValue       = '';   // 마지막으로 정상 채점된 value 스냅샷
-let beforeCompositionValue = ''; // compositionstart 직전 value
+//  [버그 경로]
+//  blur 먼저 발생
+//    → composing=false 세팅 + rAF(value 복원) 예약
+//    → 그 직후 compositionend 발생 (rAF 실행 전!)
+//    → isSafeToRecompute=true 이므로 오염된 value 로 recompute() 실행
+//    → 멀쩡한 글자 오자 처리 + errorEver[] 기록 (복원 불가)
+//    → 게다가 lastSafeValue 가 "마지막 조합 직전" 이라
+//      한 글자 빠진 채로 복원 → 이후 글자 전체 한 칸 밀려 오자 폭탄
+//
+//  [해결 전략]
+//  1) isSafeToRecompute 플래그:
+//     blur 발생 순간 false 로 잠금 → compositionend/input 의
+//     recompute 호출을 차단. value 복원 + 재채점 완료 후 true 복원.
+//  2) visibilitychange 선제 처리:
+//     탭이 숨겨지는 순간 value 를 lastSafeValue 로 강제 고정 +
+//     composing 리셋. blur 가 발생해도 이미 value 가 안전한 상태.
+//  3) compositionend value 감소 방어:
+//     예외 경로로 value 가 줄었을 때 lastSafeValue 로 복원.
+// ════════════════════════════════════════════════════════════════════
+let lastSafeValue = '';       // 마지막 정상 채점 완료 value 스냅샷
+let isSafeToRecompute = true; // blur 직후 채점 잠금 플래그
 
 function recompute() {
   if (!running) return;
+  if (!isSafeToRecompute) return; // blur 복원 진행 중 — 오염된 value 로 채점 차단
   const typed = [...typingBox.value];
   let ni = 0;
   charResults.fill(null);
@@ -519,14 +532,12 @@ function recompute() {
   }
   judgedCount = ni;
   correctCount = newCorrect;
-  // 정상 채점 완료 → 스냅샷 갱신
-  lastSafeValue = typingBox.value;
+  lastSafeValue = typingBox.value; // 정상 채점 완료 → 스냅샷 갱신
   renderPreview();
   updateStats();
   updateTypedDisplay();
   if (nonSkipChars.length > 0 && judgedCount >= nonSkipChars.length) setTimeout(finishTest, 80);
 }
-
 function updateTypedDisplay() {
   if (!running) { typedDisplay.innerHTML = ''; return; }
   const c = chunks[curChunk];
@@ -554,21 +565,18 @@ function updateTypedDisplay() {
   typedDisplay.innerHTML = html;
 }
 
-// compositionstart: 조합 시작 직전 value 저장
+// ── IME 이벤트 ──────────────────────────────────────────────────────────────
 typingBox.addEventListener('compositionstart', () => {
   composing = true;
-  beforeCompositionValue = typingBox.value;
 });
 
-// compositionend: 조합 완료
-// 창 전환 등으로 인해 value가 beforeCompositionValue보다 짧아진 경우
-// (IME가 강제로 조합을 취소해 글자가 날아간 경우) → 복원 후 채점
 typingBox.addEventListener('compositionend', () => {
   composing = false;
-  // IME 리셋으로 value가 비정상적으로 줄었을 때 복원
-  if (typingBox.value.length < beforeCompositionValue.length) {
-    typingBox.value = beforeCompositionValue;
+  // 예외 경로: IME가 value를 줄였을 때 lastSafeValue로 복원
+  if (typingBox.value.length < lastSafeValue.length) {
+    typingBox.value = lastSafeValue;
   }
+  // isSafeToRecompute가 true일 때만 채점 (blur 복원 중이면 차단됨)
   recompute();
 });
 
@@ -579,17 +587,21 @@ typingBox.addEventListener('keydown', e => {
 });
 typingBox.addEventListener('input', () => { if (!running || composing) return; recompute(); moveCursorToEnd(); });
 
-// blur: 재포커싱 전 value를 lastSafeValue로 복원
-// → 창 전환으로 IME가 value를 오염시켜도 원상복구
+// ── blur: value 잠금 → 복원 → 재채점 ────────────────────────────────────────
+// blur 발생 즉시 isSafeToRecompute=false 로 잠가
+// compositionend/input 이 rAF 이전에 발동해도 오염된 value 로 채점하지 않도록 차단
+// 복원 완료 후 잠금 해제 + 재채점
 typingBox.addEventListener('blur', () => {
   if (!running) return;
-  // IME 조합 중이었다면 beforeCompositionValue로 복원, 아니면 lastSafeValue로 복원
-  const safeVal = composing ? beforeCompositionValue : lastSafeValue;
-  composing = false; // blur 시 IME 상태도 강제 리셋
+  isSafeToRecompute = false; // 즉시 잠금
+  composing = false;
+  const safeVal = lastSafeValue;
   requestAnimationFrame(() => {
     typingBox.value = safeVal;
     typingBox.focus();
     moveCursorToEnd();
+    isSafeToRecompute = true; // 복원 완료 → 잠금 해제
+    recompute();              // 복원된 value 로 정상 재채점
   });
 });
 
@@ -607,22 +619,24 @@ typingBox.addEventListener('keyup', e => {
   if (!running) return;
   if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(e.key)) moveCursorToEnd();
 });
-// 포커스 시 항상 커서를 끝으로
 typingBox.addEventListener('focus', () => { if (running) setTimeout(moveCursorToEnd, 0); });
 
-// 탭/창 전환 감지: 숨겨지는 순간 composing 상태를 안전하게 리셋
-// → 돌아왔을 때 blur 핸들러가 이미 value를 복원했으므로 재채점 불필요
+// ── visibilitychange: 탭 숨김 시 선제적으로 value 고정 ───────────────────────
+// blur 보다 먼저 실행됨. 여기서 value 를 lastSafeValue 로 고정해 두면
+// 이후 blur 핸들러가 동일한 값을 복원하므로 실질적으로 무해.
 document.addEventListener('visibilitychange', () => {
   if (!running) return;
   if (document.hidden) {
-    // 탭이 숨겨질 때 IME 조합 중이었다면 beforeCompositionValue 기준으로 value 고정
-    if (composing) {
-      typingBox.value = beforeCompositionValue;
-      composing = false;
-      lastSafeValue = beforeCompositionValue;
-    }
+    isSafeToRecompute = false; // 전환 중 어떤 이벤트도 채점하지 않도록 잠금
+    composing = false;
+    typingBox.value = lastSafeValue; // value 를 안전한 스냅샷으로 즉시 고정
+  } else {
+    // 탭이 다시 보임: 이미 blur→focus 사이클이 value를 복원했으므로 잠금만 해제
+    isSafeToRecompute = true;
+    recompute();
   }
 });
+
 
 btnLoad.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', ev => {
@@ -644,7 +658,7 @@ function loadText(text) { rawText = text.replace(/[\r\n]+/g, ' ').trim(); resetT
 function resetToReady() {
   stopTimer(); running = false; errorCount = 0; correctCount = 0;
   errorEver = []; composing = false; elapsedSec = 0; curChunk = 0;
-  lastSafeValue = ''; beforeCompositionValue = '';
+  lastSafeValue = ''; isSafeToRecompute = true;
   previewTrack.style.transition = 'none'; previewTrack.style.transform = 'translateY(0)';
   ghostTrack.style.transition = 'none'; ghostTrack.style.transform = 'translateY(0)';
   buildChars(rawText); updateStats();
@@ -682,8 +696,7 @@ function startTest() {
   errorCount = 0; correctCount = 0;
   charResults = new Array(nonSkipChars.length).fill(null);
   errorEver   = new Array(nonSkipChars.length).fill(false);
-  lastSafeValue = '';
-  beforeCompositionValue = '';
+  lastSafeValue = ''; isSafeToRecompute = true;
   previewTrack.style.transition = 'none'; previewTrack.style.transform = 'translateY(0)';
   ghostTrack.style.transition   = 'none'; ghostTrack.style.transform   = 'translateY(0)';
   typingBox.value = ''; typedDisplay.innerHTML = '';
