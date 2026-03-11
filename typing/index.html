@@ -342,7 +342,11 @@ _ro.observe(contentEl);
 // 초기 적용
 applyFontSize(calcFontSize(contentEl.getBoundingClientRect().width));
 
-function isSkip(ch) { return !ignoreToggle.checked ? false : /[^가-힣a-zA-Z0-9]/.test(ch); }
+function isSkip(ch) {
+  if (!ignoreToggle.checked) return false;
+  if (ch === '%' || ch === '.') return false; // 항상 채점 대상
+  return /[^가-힣a-zA-Z0-9]/.test(ch);
+}
 function formatTime(s) { return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
 function getSpeed() { return Math.round(correctCount / (elapsedSec/60 || 0.001)); }
 function getAccuracy() {
@@ -610,6 +614,20 @@ typingBox.addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); return; }
   if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(e.key)) {
     e.preventDefault(); return;
+  }
+  if (e.key === 'Backspace' && ignoreToggle.checked) {
+    e.preventDefault();
+    let chars = [...typingBox.value];
+    if (!chars.length) return;
+    // 끝 글자 삭제 후, 새 끝 글자가 skip이면 계속 삭제
+    chars.pop();
+    while (chars.length > 0 && isSkip(chars[chars.length - 1])) {
+      chars.pop();
+    }
+    typingBox.value = chars.join('');
+    recompute();
+    moveCursorToEnd();
+    return;
   }
 });
 
