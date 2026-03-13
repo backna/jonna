@@ -884,25 +884,37 @@ async function randomSetup() {
 
     btn.innerHTML = '<span class="btn-icon">🎲</span> 세팅 중...';
 
-    // ── 2. 랜덤 1개씩 뽑기 ──
-    const picks = [];
-    if (_speechPool.length > 0)
-      picks.push({ mp3: _speechPool[Math.floor(Math.random() * _speechPool.length)], label: '연설 🎤' });
-    if (_essayPool.length > 0)
-      picks.push({ mp3: _essayPool[Math.floor(Math.random() * _essayPool.length)],   label: '논설 📝' });
+    // ── 2. 이미 재생목록에 있는 파일 제외 후 랜덤 1개씩 뽑기 ──
+    const usedNames = new Set(playlistData.map(item => item.audio && item.audio.name).filter(Boolean));
+    const availSpeech = _speechPool.filter(n => !usedNames.has(n));
+    const availEssay  = _essayPool.filter(n => !usedNames.has(n));
 
-    // ── 3. 재생목록에 추가 (이미 있으면 스킵) ──
+    if (availSpeech.length === 0 && availEssay.length === 0) {
+      showToast('🎉 모든 파일이 이미 추가됐어요! 폴더를 다시 선택해 주세요.');
+      _dataDirectoryHandle = null;
+      _speechPool = [];
+      _essayPool  = [];
+      resetRandomBtn();
+      return;
+    }
+
+    const picks = [];
+    if (availSpeech.length > 0)
+      picks.push({ mp3: availSpeech[Math.floor(Math.random() * availSpeech.length)], label: '연설 🎤' });
+    else
+      showToast('⚠️ 남은 연설 파일이 없어요!');
+
+    if (availEssay.length > 0)
+      picks.push({ mp3: availEssay[Math.floor(Math.random() * availEssay.length)], label: '논설 📝' });
+    else
+      showToast('⚠️ 남은 논설 파일이 없어요!');
+
+    // ── 3. 재생목록에 추가 ──
     const addedLabels = [];
     for (const pick of picks) {
       const mp3Name  = pick.mp3;
       const baseName = mp3Name.slice(0, mp3Name.lastIndexOf('.'));
       const txtName  = baseName + '.txt';
-
-      // 중복 체크
-      if (playlistData.find(item => item.audio && item.audio.name === mp3Name)) {
-        addedLabels.push(pick.label + ' (이미 추가됨)');
-        continue;
-      }
 
       try {
         const mp3File = await (await _dataDirectoryHandle.getFileHandle(mp3Name)).getFile();
