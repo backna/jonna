@@ -163,13 +163,21 @@ body {
 
 .playlist-item {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   padding: 8px 12px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 13px;
   transition: background .15s;
+}
+
+.playlist-item span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .playlist-item:hover { background: var(--pink-100); }
@@ -321,6 +329,28 @@ body {
 
 .ans-btn:hover { background: var(--pink-400); color: #fff; }
 .ans-btn:disabled { border-color: #e0d0d8; color: #d0b8c4; cursor: not-allowed; background: #fff; }
+
+/* 삭제 버튼 */
+.del-btn {
+  flex-shrink: 0;
+  margin-left: 15px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  background: #fff;
+  border: 1.5px solid #f08080;
+  color: #e05050;
+  border-radius: 6px;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.del-btn:hover { background: #e05050; color: #fff; border-color: #e05050; }
 
 /* 답안 팝업 */
 #textPreview {
@@ -727,9 +757,65 @@ function addItem(name, index) {
   };
 
   item.appendChild(btn);
+
+  var delBtn = document.createElement("button");
+  delBtn.className = "del-btn";
+  delBtn.textContent = "✕";
+  delBtn.title = "삭제";
+  delBtn.onclick = function(e) {
+    e.stopPropagation();
+    removeItem(item, index);
+  };
+  item.appendChild(delBtn);
+
   item.onclick = function () { select(index); };
   item.ondblclick = function () { playFromStart(index); };
   playlist.appendChild(item);
+}
+
+function removeItem(itemEl, index) {
+  // 재생 중인 항목 삭제 시 정지
+  if (currentIndex === index) {
+    audio.pause();
+    audio.src = '';
+    currentIndex = -1;
+    selectedIndex = -1;
+    playPauseBtn.textContent = "▶ 재생";
+    progress.value = 0;
+    progress.disabled = true;
+    timeDisplay.textContent = "00:00 / 00:00";
+  }
+
+  // playlistData에서 제거
+  playlistData.splice(index, 1);
+
+  // DOM 전체 재렌더링
+  var items = playlist.getElementsByClassName("playlist-item");
+  while (items.length) items[0].remove();
+
+  playlistData.forEach(function(data, i) {
+    addItem(data.audio.name, i);
+    if (data.txt || data.hwp) updateItemBtn(i);
+  });
+
+  // selectedIndex / currentIndex 보정
+  if (selectedIndex > index) selectedIndex--;
+  else if (selectedIndex === index) selectedIndex = -1;
+  if (currentIndex > index) currentIndex--;
+
+  if (selectedIndex >= 0) select(selectedIndex);
+
+  // 목록이 비면 hint 복원
+  if (playlistData.length === 0) {
+    var h = document.createElement("div");
+    h.id = "hint";
+    playlist.appendChild(h);
+    hint = h;
+    var baseText = hintMessages[Math.floor(Math.random() * hintMessages.length)];
+    var longText = "";
+    while (longText.length < 5000) longText += baseText;
+    hint.textContent = longText;
+  }
 }
 
 function select(index) {
