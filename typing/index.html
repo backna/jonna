@@ -7,18 +7,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --surface2: #22263a;
-    --border: #2e3250;
-    --accent: #5b7cfa;
-    --accent2: #fa5b8a;
-    --text: #e8eaf6;
+    --bg: #f4f6ff;
+    --surface: #ffffff;
+    --surface2: #edf0ff;
+    --border: #cdd5f8;
+    --accent: #4263eb;
+    --accent2: #e83070;
+    --text: #1a1f3a;
     --text-muted: #6b7280;
-    --correct: #ffffff;
-    --error: #ff4f6b;
-    --pending: #3a3f5c;
-    --success: #34d399;
+    --correct: #1a1f3a;
+    --error: #dc2626;
+    --pending: #c8d0f0;
+    --success: #059669;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; }
@@ -31,9 +31,9 @@
   .btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
   .btn:disabled { opacity:.35; cursor:not-allowed; }
   .btn-primary { background:var(--accent); border-color:var(--accent); color:#fff; }
-  .btn-primary:hover:not(:disabled) { background:#4a6cf0; border-color:#4a6cf0; color:#fff; }
+  .btn-primary:hover:not(:disabled) { filter:brightness(1.12); color:#fff; }
   .btn-danger { background:var(--accent2); border-color:var(--accent2); color:#fff; }
-  .btn-danger:hover:not(:disabled) { background:#e04070; border-color:#e04070; color:#fff; }
+  .btn-danger:hover:not(:disabled) { filter:brightness(1.12); color:#fff; }
 
   .toggle-inline { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-muted); user-select:none; padding-right:12px; margin-right:4px; border-right:1px solid var(--border); }
   .toggle-inline span { white-space:nowrap; }
@@ -68,9 +68,9 @@
   .preview-track { position:absolute; left:32px; right:32px; top:0; }
   .preview-row { height:72px; display:flex; align-items:center; letter-spacing:.03em; line-height:1; white-space:nowrap; overflow:hidden; }
   .preview-row.row-next { display:none; }
-  .char { color:#8892b0; flex-shrink:0; }
-  .char.correct { color:#ffffff; }
-  .char.error   { color:var(--error); }
+  .char { color:var(--pending); flex-shrink:0; }
+  .char.correct { color:var(--correct); font-weight:600; }
+  .char.error   { color:var(--error); font-weight:600; }
 
   .progress-bar-bg { height:3px; background:var(--border); overflow:hidden; }
   .progress-bar-fill { height:100%; background:var(--accent); transition:width .25s; }
@@ -79,9 +79,9 @@
   .typed-display-wrap { background:var(--surface2); border:1px solid var(--border); border-top:none; border-radius:0 0 10px 10px; height:72px; position:relative; display:flex; align-items:center; padding:0 32px; overflow:hidden; cursor:text; }
   .typed-display { letter-spacing:.03em; white-space:nowrap; flex:1; display:flex; align-items:center; overflow:hidden; pointer-events:none; }
   .td-char { flex-shrink:0; }
-  .td-char.ok  { color:#ffffff; }
-  .td-char.bad { color:var(--error); }
-  .td-char.skip-char { color:#8892b0; }
+  .td-char.ok  { color:var(--correct); font-weight:600; }
+  .td-char.bad { color:var(--error); font-weight:600; }
+  .td-char.skip-char { color:var(--text-muted); }
   .td-caret { display:inline-block; width:2px; height:30px; background:var(--accent); margin-left:1px; flex-shrink:0; vertical-align:middle; animation:blink .9s step-end infinite; }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
   #typing-box {
@@ -111,7 +111,8 @@
     white-space:nowrap; overflow:hidden;
   }
   .ghost-char {
-    color: rgba(136,146,176,0.28);
+    color: var(--pending);
+    opacity: 0.6;
     flex-shrink:0;
   }
   /* 구분선 레이블 */
@@ -137,59 +138,28 @@
   .theme-picker { display:flex; align-items:center; gap:8px; padding-right:12px; margin-right:4px; border-right:1px solid var(--border); }
   .theme-dot { width:20px; height:20px; border-radius:50%; border:2.5px solid transparent; cursor:pointer; padding:0; transition:all .15s; outline:none; flex-shrink:0; }
   .theme-dot:hover { transform:scale(1.22); }
-  .theme-dot.on { border-color:#fff; box-shadow:0 0 0 2px rgba(255,255,255,0.22); transform:scale(1.22); }
-  .t-blue   { background:#5b7cfa; }
-  .t-purple { background:#a855f7; }
-  .t-pink   { background:#f472b6; }
-  .t-teal   { background:#2dd4bf; }
-  .t-orange { background:#fb923c; }
-  .t-green  { background:#4ade80; }
-
-  /* ── 다크/라이트 모드 토글 ── */
-  .mode-toggle-wrap { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-muted); user-select:none; padding-right:12px; margin-right:4px; border-right:1px solid var(--border); }
-  .mode-toggle-wrap .mode-icon { font-size:14px; line-height:1; }
-  .mode-toggle { position:relative; width:40px; height:22px; flex-shrink:0; }
-  .mode-toggle input { opacity:0; width:0; height:0; }
-  .mode-slider { position:absolute; inset:0; background:var(--border); border-radius:22px; cursor:pointer; transition:.2s; }
-  .mode-slider::after { content:''; position:absolute; width:16px; height:16px; background:#fff; border-radius:50%; top:3px; left:3px; transition:.2s; }
-  .mode-toggle input:checked + .mode-slider { background:var(--accent); }
-  .mode-toggle input:checked + .mode-slider::after { transform:translateX(18px); }
-
-  /* ── 라이트 모드 전역 오버라이드 ── */
-  body.light .char         { color: var(--pending); }
-  body.light .char.correct { color: var(--text); font-weight: 600; }
-  body.light .char.error   { color: var(--error); font-weight: 600; }
-  body.light .preview-row  { font-weight: 500; }
-  body.light .td-char.ok        { color: var(--text); font-weight: 600; }
-  body.light .td-char.bad       { color: var(--error); font-weight: 600; }
-  body.light .td-char.skip-char { color: var(--text-muted); font-weight: 500; }
-  body.light .ghost-row    { font-weight: 500; }
-  body.light .theme-dot.on { border-color:#222; box-shadow:0 0 0 1.5px rgba(0,0,0,0.18); }
-  body.light .ghost-char   { color: rgba(80,90,120,0.22); }
-  body.light .ghost-label  { color: rgba(80,90,120,0.4); }
-  body.light #title-deco   { color: #222 !important; }
+  .theme-dot.on { border-color:#222; box-shadow:0 0 0 2px rgba(0,0,0,0.18); transform:scale(1.22); }
+  .theme-picker.dark-mode .theme-dot.on { border-color:#fff; box-shadow:0 0 0 2px rgba(255,255,255,0.30); }
+  .t-pink    { background:#b87880; }
+  .t-purple  { background:#8070a8; }
+  .t-orange  { background:#e87838; }
+  .t-mint    { background:#4a9e8a; }
+  .t-skyblue { background:#5088a8; }
+  .t-gray    { background:#2a2a2a; }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="header-title"><span>백나</span> <span id="title-deco" style="color:#ffffff;font-weight:400;">타자₍՞ • 🐽 • ՞₎ ˚₊·—♡</span></div>
+  <div class="header-title"><span>백나</span> <span id="title-deco" style="color:var(--text-muted);font-weight:400;">타자₍՞ • 🐽 • ՞₎ ˚₊·—♡</span></div>
   <div class="header-actions">
-    <label class="mode-toggle-wrap" id="mode-toggle-wrap">
-      <span class="mode-icon">🌙</span>
-      <label class="mode-toggle">
-        <input type="checkbox" id="mode-switch">
-        <span class="mode-slider"></span>
-      </label>
-      <span class="mode-icon">☀️</span>
-    </label>
     <div class="theme-picker">
-      <button class="theme-dot t-blue   on" onclick="setTheme('blue',this)"   title="블루"></button>
-      <button class="theme-dot t-purple"    onclick="setTheme('purple',this)" title="퍼플"></button>
-      <button class="theme-dot t-pink"      onclick="setTheme('pink',this)"   title="핑크"></button>
-      <button class="theme-dot t-teal"      onclick="setTheme('teal',this)"   title="틸"></button>
-      <button class="theme-dot t-orange"    onclick="setTheme('orange',this)" title="오렌지"></button>
-      <button class="theme-dot t-green"     onclick="setTheme('green',this)"  title="그린"></button>
+      <button class="theme-dot t-pink    on" onclick="setTheme('pink',this)"    title="핑크"></button>
+      <button class="theme-dot t-purple"     onclick="setTheme('purple',this)"  title="보라"></button>
+      <button class="theme-dot t-orange"     onclick="setTheme('orange',this)"  title="주황"></button>
+      <button class="theme-dot t-mint"       onclick="setTheme('mint',this)"    title="민트"></button>
+      <button class="theme-dot t-skyblue"    onclick="setTheme('skyblue',this)" title="블루"></button>
+      <button class="theme-dot t-gray"       onclick="setTheme('gray',this)"    title="다크"></button>
     </div>
     <label class="toggle-inline" id="ignore-toggle-wrap">
       <span>띄어쓰기·문장부호 무시</span>
@@ -253,7 +223,7 @@
       <!-- 하단: 입력 표시줄 -->
       <div class="typed-display-wrap" id="typed-display-wrap">
         <div class="typed-display" id="typed-display"></div>
-        <input id="typing-box" type="text" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" disabled>
+        <input id="typing-box" type="text" lang="ko" inputmode="text" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" disabled>
       </div>
     </div>
 
@@ -688,36 +658,35 @@ typingBox.addEventListener('keyup', e => {
 });
 typingBox.addEventListener('focus', () => { if (running) setTimeout(moveCursorToEnd, 0); });
 
-// ── 창 전환 복귀 시 IME 재초기화 ─────────────────────────────────────────────
-// 다른 앱/창에 갔다 돌아올 때 첫 글자가 영문으로 찍히는 현상 방지
-window.addEventListener('focus', () => {
+// ── 창/탭 전환 복귀 시 IME 재초기화 ─────────────────────────────────────────
+// blur/focus 사이클은 blur 핸들러와 충돌해 오히려 역효과.
+// 대신 복귀 감지 후 typingBox 의 lang 속성을 토글해
+// 브라우저가 IME 를 한글 모드로 재인식하게 유도한다.
+function reInitIME() {
   if (!running) return;
-  setTimeout(() => {
-    typingBox.blur();
-    setTimeout(() => {
-      typingBox.focus();
-      moveCursorToEnd();
-    }, 30);
-  }, 0);
+  // lang 토글로 IME 컨텍스트 강제 재설정
+  typingBox.lang = 'ko';
+  typingBox.setAttribute('lang', 'ko');
+  // 포커스가 이미 typingBox 에 있으면 그대로, 없으면 복원
+  if (document.activeElement !== typingBox) {
+    typingBox.focus();
+    moveCursorToEnd();
+  }
+}
+
+window.addEventListener('focus', () => {
+  // 딜레이 없이 즉시 — 타이밍 경쟁 원천 차단
+  reInitIME();
 });
 
 // ── visibilitychange ──────────────────────────────────────────────────────────
-// 탭이 숨겨질 때: value 를 안전한 스냅샷으로 즉시 고정 + composing 리셋
-// 탭이 복귀할 때: 아무것도 하지 않음 (다음 키 입력 시 input 이벤트가 처리)
 document.addEventListener('visibilitychange', () => {
   if (!running) return;
   if (document.hidden) {
     composing = false;
-    typingBox.value = lastSafeValue; // 오염 전에 선제적으로 고정
+    typingBox.value = lastSafeValue;
   } else {
-    // 탭 복귀 시 IME 리셋 방지 — blur/focus 사이클로 한글 입력기 재초기화
-    setTimeout(() => {
-      typingBox.blur();
-      setTimeout(() => {
-        typingBox.focus();
-        moveCursorToEnd();
-      }, 30);
-    }, 0);
+    reInitIME();
   }
 });
 
@@ -748,7 +717,7 @@ function resetToReady() {
   typingBox.value = ''; typedDisplay.innerHTML = ''; typingBox.disabled = true;
   emptyState.style.display = 'none';
   typingWrap.classList.add('active'); resultWrap.classList.remove('active');
-  btnStart.textContent = '시작(F9)'; btnStart.className = 'btn btn-primary';
+  btnStart.textContent = '시작(F9)'; btnStart.className = 'btn btn-primary'; btnStart.style.display = '';
   btnStart.disabled = false; btnEnd.style.display = 'none'; btnEnd.disabled = true; btnReset.disabled = true;
   rebuildRows(); progressFill.style.width = '0%';
 }
@@ -810,63 +779,39 @@ ignoreToggle.addEventListener('change', () => { if (rawText && !running) resetTo
 
 // ── 테마 ──────────────────────────────────────────────────────────────────
 const _themes = {
-  dark: {
-    blue:   { '--bg':'#0f1117','--surface':'#1a1d27','--surface2':'#22263a','--border':'#2e3250','--accent':'#5b7cfa','--accent2':'#fa5b8a','--text':'#e8eaf6','--text-muted':'#6b7280','--error':'#ff4f6b','--success':'#34d399','--pending':'#3a3f5c' },
-    purple: { '--bg':'#0e0f1a','--surface':'#18152e','--surface2':'#201c3a','--border':'#2d2852','--accent':'#a855f7','--accent2':'#f472b6','--text':'#ede8f6','--text-muted':'#6b6880','--error':'#ff4f6b','--success':'#34d399','--pending':'#35285a' },
-    pink:   { '--bg':'#120f17','--surface':'#1e1528','--surface2':'#271832','--border':'#3a2548','--accent':'#f472b6','--accent2':'#fb923c','--text':'#f6e8f2','--text-muted':'#806278','--error':'#ff4f6b','--success':'#34d399','--pending':'#3a1832' },
-    teal:   { '--bg':'#0a1212','--surface':'#121e1e','--surface2':'#182828','--border':'#1e3838','--accent':'#2dd4bf','--accent2':'#5b7cfa','--text':'#e8f6f4','--text-muted':'#507878','--error':'#ff4f6b','--success':'#34d399','--pending':'#183030' },
-    orange: { '--bg':'#120e0a','--surface':'#1e1512','--surface2':'#281c18','--border':'#3a2820','--accent':'#fb923c','--accent2':'#f472b6','--text':'#f6ede8','--text-muted':'#80685a','--error':'#ff4f6b','--success':'#34d399','--pending':'#382018' },
-    green:  { '--bg':'#0a120c','--surface':'#121e14','--surface2':'#18281c','--border':'#1e3824','--accent':'#4ade80','--accent2':'#2dd4bf','--text':'#e8f6ea','--text-muted':'#507858','--error':'#ff4f6b','--success':'#4ade80','--pending':'#183820' }
-  },
-  light: {
-    blue:   { '--bg':'#f4f6ff','--surface':'#ffffff','--surface2':'#edf0ff','--border':'#cdd5f8','--accent':'#4263eb','--accent2':'#e83070','--text':'#1a1f3a','--text-muted':'#6b7280','--error':'#dc2626','--success':'#059669','--pending':'#c8d0f0' },
-    purple: { '--bg':'#f8f5ff','--surface':'#ffffff','--surface2':'#f1ebff','--border':'#d9c8f8','--accent':'#7c3aed','--accent2':'#db2777','--text':'#2d1a4a','--text-muted':'#7c6898','--error':'#dc2626','--success':'#059669','--pending':'#e0d8f8' },
-    pink:   { '--bg':'#fff5fa','--surface':'#ffffff','--surface2':'#ffedf6','--border':'#ffd0e8','--accent':'#db2777','--accent2':'#f97316','--text':'#3a1030','--text-muted':'#b06080','--error':'#dc2626','--success':'#059669','--pending':'#ffd0e8' },
-    teal:   { '--bg':'#f0fbf8','--surface':'#ffffff','--surface2':'#e0f8f2','--border':'#b0e0d8','--accent':'#0d9488','--accent2':'#4263eb','--text':'#0e2e28','--text-muted':'#4a9080','--error':'#dc2626','--success':'#059669','--pending':'#b8e8e0' },
-    orange: { '--bg':'#fff8f0','--surface':'#ffffff','--surface2':'#fff0e0','--border':'#ffd8b0','--accent':'#ea580c','--accent2':'#db2777','--text':'#3a1800','--text-muted':'#8a6040','--error':'#dc2626','--success':'#059669','--pending':'#ffe0c0' },
-    green:  { '--bg':'#f0fbf4','--surface':'#ffffff','--surface2':'#e0f8e8','--border':'#b0e8c0','--accent':'#16a34a','--accent2':'#0d9488','--text':'#0e2e18','--text-muted':'#4a9060','--error':'#dc2626','--success':'#16a34a','--pending':'#b8e8c8' }
-  }
+  // bg=pink-50, surface=white, surface2=pink-100, border, accent=pink-500, accent2=pink-400
+  // text, text-muted=sub, pending=pink-200
+  pink:    { '--bg':'#fdf6f7','--surface':'#ffffff','--surface2':'#f5e8eb','--border':'#e8cdd2','--accent':'#b87880','--accent2':'#c07888','--correct':'#907078','--text':'#3a2028','--text-muted':'#b09098','--error':'#f87171','--success':'#6aaa88','--pending':'#c8a0a8' },
+  purple:  { '--bg':'#f7f5fa','--surface':'#ffffff','--surface2':'#ece8f5','--border':'#d8d0e8','--accent':'#8070a8','--accent2':'#9878b0','--correct':'#706880','--text':'#2a2038','--text-muted':'#9888a8','--error':'#f87171','--success':'#6aaa88','--pending':'#b0a0c8' },
+  orange:  { '--bg':'#fdf8f2','--surface':'#ffffff','--surface2':'#f8eed8','--border':'#e8d098','--accent':'#e87838','--accent2':'#e87838','--correct':'#a07040','--text':'#302008','--text-muted':'#a08848','--error':'#f87171','--success':'#6aaa88','--pending':'#e8b858' },
+  mint:    { '--bg':'#f4faf8','--surface':'#ffffff','--surface2':'#e0f0ea','--border':'#b8dcd0','--accent':'#4a9e8a','--accent2':'#4a9e8a','--correct':'#4a8878','--text':'#182e28','--text-muted':'#70a898','--error':'#f87171','--success':'#6aaa88','--pending':'#80c0b0' },
+  skyblue: { '--bg':'#f4f8fc','--surface':'#ffffff','--surface2':'#e0ecf5','--border':'#b8d4e8','--accent':'#5088a8','--accent2':'#5088a8','--correct':'#487888','--text':'#182030','--text-muted':'#6090a8','--error':'#f87171','--success':'#6aaa88','--pending':'#80aec8' },
+  gray:    { '--bg':'#1a1a1a','--surface':'#242424','--surface2':'#2e2e2e','--border':'#3a3a3a','--accent':'#d07878','--accent2':'#d07878','--correct':'#dddddd','--text':'#eeeeee','--text-muted':'#888888','--error':'#f87171','--success':'#4ade80','--pending':'#787878' }
 };
 
-let _isLight = false;
-let _currentColor = 'blue';
-
-const modeSwitch = document.getElementById('mode-switch');
-
-function setMode(light) {
-  _isLight = light;
-  document.body.classList.toggle('light', light);
-  modeSwitch.checked = light;
-  setThemeColor(_currentColor);
-  try { localStorage.setItem('typerMode', light ? 'light' : 'dark'); } catch(e) {}
-}
+let _currentColor = 'pink';
 
 function setThemeColor(name) {
   _currentColor = name;
-  const t = _themes[_isLight ? 'light' : 'dark'][name];
+  const t = _themes[name];
   const r = document.documentElement;
   Object.keys(t).forEach(k => r.style.setProperty(k, t[k]));
   document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('on'));
   const dot = document.querySelector('.theme-dot.t-' + name);
   if (dot) dot.classList.add('on');
+  // 그레이(다크)일 때 선택 표시 반전
+  document.querySelector('.theme-picker').classList.toggle('dark-mode', name === 'gray');
   try { localStorage.setItem('typerTheme', name); } catch(e) {}
 }
 
-// 기존 setTheme 호환 유지
 function setTheme(name, btn) { setThemeColor(name); }
-
-modeSwitch.addEventListener('change', () => setMode(modeSwitch.checked));
 
 // 저장된 설정 복원
 (function() {
   try {
-    const savedMode  = localStorage.getItem('typerMode')  || 'dark';
-    const savedColor = localStorage.getItem('typerTheme') || 'blue';
-    _isLight = savedMode === 'light';
-    modeSwitch.checked = _isLight;
-    document.body.classList.toggle('light', _isLight);
+    const savedColor = localStorage.getItem('typerTheme') || 'pink';
     setThemeColor(savedColor);
-  } catch(e) {}
+  } catch(e) { setThemeColor('pink'); }
 })();
 
 emptyState.style.display = '';
